@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Number Guessing Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background-color: #f0f4f8;
+      color: #333;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background-color: #1e1e1e;
+      color: #fff;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .dark button {
+      background-color: #2e7d32;
+    }
+    .toggle-btn {
+      background-color: #555;
+      color: #fff;
+    }
+    .toggle-btn:hover {
+      background-color: #333;
+    }
+    #feedback, #highScore, #history, #streak {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .modal-content {
+      background: white;
+      margin: 15% auto;
+      padding: 30px;
+      border-radius: 12px;
+      width: 300px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .dark .modal-content {
+      background: #2c2c2c;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 Number Guessing Game</h1>
+  <p>Guess a number between 1 and 100</p>
+
+  <input type="number" id="guess" min="1" max="100" placeholder="Enter your guess">
+  <br>
+  <button onclick="checkGuess()">Guess</button>
+  <button onclick="resetGame()">Restart 🔁</button>
+  <button onclick="toggleDarkMode()" class="toggle-btn">🌓 Toggle Dark Mode</button>
+  <button onclick="giveHint()">💡 Hint</button>
+
+  <p id="feedback"></p>
+  <p id="highScore"></p>
+  <p id="streak"></p>
+  <p id="history"></p>
+
+  <div id="victoryModal" class="modal">
+    <div class="modal-content">
+      <h2>🎉 You Won!</h2>
+      <p id="resultText"></p>
+      <button onclick="resetGame()">Play Again</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    let numberToGuess, attempts, guesses = [], streak = 0;
+
+    function initGame() {
+      numberToGuess = Math.floor(Math.random() * 100) + 1;
+      attempts = 0;
+      guesses = [];
+
+      if (!document.body.classList.contains('dark')) {
+        document.body.style.backgroundColor = "#f0f4f8";
+      }
+
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('highScore').textContent = getHighScoreText();
+      document.getElementById('streak').textContent = `🔥 Streak: ${streak}`;
+      document.getElementById('history').textContent = '';
+      document.getElementById('guess').value = '';
+      document.getElementById('guess').disabled = false;
+      document.getElementById('victoryModal').style.display = 'none';
+    }
+
+    function checkGuess() {
+      const guessInput = document.getElementById('guess');
+      const userGuess = parseInt(guessInput.value);
+      const feedback = document.getElementById('feedback');
+      const history = document.getElementById('history');
+      const diff = Math.abs(userGuess - numberToGuess);
+      attempts++;
+
+      if (isNaN(userGuess)) {
+        feedback.textContent = "🚫 Please enter a valid number.";
+        return;
+      }
+
+      guesses.push(userGuess);
+      history.textContent = `Your guesses: ${guesses.join(", ")}`;
+
+      updateBackground(diff);
+
+      if (userGuess < numberToGuess) {
+        feedback.textContent = diff <= 5 ? "🔥 Very close! Just a bit higher." : "📉 Too low!";
+      } else if (userGuess > numberToGuess) {
+        feedback.textContent = diff <= 5 ? "🔥 Very close! Just a bit lower." : "📈 Too high!";
+      } else {
+        feedback.textContent = `🎉 Correct!`;
+        guessInput.disabled = true;
+        updateHighScore();
+        launchConfetti();
+        showVictoryModal();
+      }
+    }
+
+    function resetGame() {
+      initGame();
+    }
+
+    function getHighScoreText() {
+      const best = localStorage.getItem('highScore');
+      return best ? `🏆 Best Score: ${best} attempt(s)` : '🏆 No high score yet!';
+    }
+
+    function updateHighScore() {
+      const best = localStorage.getItem('highScore');
+      if (!best || attempts < parseInt(best)) {
+        localStorage.setItem('highScore', attempts);
+        document.getElementById('highScore').textContent = `🏆 New Best Score: ${attempts} attempt(s)!`;
+      }
+      streak++;
+      document.getElementById('streak').textContent = `🔥 Streak: ${streak}`;
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+      if (document.body.classList.contains('dark')) {
+        document.body.style.backgroundColor = '#1e1e1e';
+      } else {
+        updateBackground(100); 
+      }
+    }
+
+    function launchConfetti() {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+
+    function showVictoryModal() {
+      document.getElementById("resultText").textContent = `You guessed the number in ${attempts} attempt(s)!`;
+      document.getElementById("victoryModal").style.display = "block";
+    }
+
+    function giveHint() {
+      const hint = numberToGuess % 2 === 0 ? 'even' : 'odd';
+      alert(`💡 Hint: The number is ${hint}.`);
+    }
+
+    function updateBackground(diff) {
+      if (document.body.classList.contains('dark')) {
+        return; 
+      }
+
+      let color;
+      if (diff <= 5) color = '#ffcccc';
+      else if (diff <= 10) color = '#ffe0b3';
+      else if (diff <= 20) color = '#ffffcc';
+      else color = '#f0f4f8';
+      
+      document.body.style.backgroundColor = color;
+    }
+
+    window.onload = initGame;
+  </script>
+</body>
+</html>
